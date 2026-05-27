@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Arduino15\\\\packages\\\\arduino\\\\hardware\\\\avr\")",
+      "Bash(dir \"C:\\\\Program Files \\(x86\\)\\\\Arduino\")",
+      "Bash(dir \"C:\\\\Program Files\\\\Arduino\")",
+      "Bash(dir \"D:\\\\Arduino\")",
+      "Bash(where arduino *)",
+      "Bash(where arduino-cli *)",
+      "Bash(dir \"D:\\\\Arduino\\\\Arduino15\\\\packages\")"
+    ]
+  }
+}
