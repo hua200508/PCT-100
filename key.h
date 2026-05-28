@@ -3,12 +3,13 @@
 
 #include <Arduino.h>
 
-// 使用引脚 8
-#define KEY_PIN 8
+#define KEY1_PIN 3    // GPIO3：总开关
+#define KEY2_PIN 10   // GPIO10：继电器控制
 
-// 读取按键状态的宏
-#define KEY digitalRead(KEY_PIN)
+#define KEY1 digitalRead(KEY1_PIN)
+#define KEY2 digitalRead(KEY2_PIN)
 
-void key_init(void);
+void key1_init(void);
+void key2_init(void);
 
 #endif

@@ -1,7 +1,11 @@
 #include "key.h"
 
-void key_init(void)
+void key1_init(void)
 {
-  // 启用内部下拉电阻。未按下时为低电平(0)，按下时为高电平(1)
-  pinMode(KEY_PIN, INPUT_PULLDOWN);
+  pinMode(KEY1_PIN, INPUT_PULLUP);  // 上拉：平常 HIGH，碰 GND→LOW
+}
+
+void key2_init(void)
+{
+  pinMode(KEY2_PIN, INPUT_PULLUP);  // 上拉：平常 HIGH，碰 GND→LOW
 }

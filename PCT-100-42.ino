@@ -1,27 +1,37 @@
 #include "key.h"
+#include "relay.h"
+#include "exti.h"
 
 void setup()
 {
-  key_init();
-  Serial.begin(9600); // 初始化串口，波特率9600
+  relay_init();
+  exti_init();
+  RELAY_OFF();
+
+  Serial.begin(115200);
+  Serial.println("Ready. Master=GPIO3(INT), Key=GPIO10(POLL)");
 }
 
 void loop()
 {
-  // 因为是下拉输入，按下时检测到高电平 (1)
-  if (KEY == 1)
+  exti_process();  // 中断 + 轮询消抖
+
+  if (master_state == 0)
   {
-    delay(10); // 软件消抖：延时10ms跳过机械抖动期
-    
-    // 再次确认按键状态
-    if (KEY == 1)
+    RELAY_OFF();   // 总开关关 → 灯灭
+  }
+  else if (triggered == 1)
+  {
+    RELAY_ON();    // 已触发 → 常亮
+  }
+  else
+  {
+    /* 待命闪烁：500ms 周期 */
+    static unsigned long last_toggle = 0;
+    if (millis() - last_toggle >= 250)
     {
-      Serial.println("key press!");
-      
-      // 阻塞等待按键释放（变成低电平），防止单次按下被重复打印
-      while(KEY == 1) {
-        delay(10);
-      }
+      last_toggle = millis();
+      digitalWrite(RELAY_PIN, !digitalRead(RELAY_PIN));  // 翻转
     }
   }
 }
