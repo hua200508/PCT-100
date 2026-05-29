@@ -9,29 +9,30 @@ void setup()
   RELAY_OFF();
 
   Serial.begin(115200);
-  Serial.println("Ready. Master=GPIO3(INT), Key=GPIO10(POLL)");
+  unsigned long t = millis();
+  while (!Serial && (millis() - t < 5000)) delay(10);
+
+  Serial.println("Ready. KEY1=Poll(GPIO20)  KEY2=INT(GPIO21)  Relay=GPIO6  Fan=GPIO7");
 }
 
 void loop()
 {
-  exti_process();  // 中断 + 轮询消抖
+  exti_process();  // KEY1 轮询 + KEY2 中断消抖
+  key2_charge();   // 维持 KEY2 引脚充电，保证中断检测
 
   if (master_state == 0)
   {
-    RELAY_OFF();   // 总开关关 → 灯灭
+    RELAY_OFF();
+    FAN_OFF();
   }
   else if (triggered == 1)
   {
-    RELAY_ON();    // 已触发 → 常亮
+    RELAY_ON();
+    FAN_ON();
   }
   else
   {
-    /* 待命闪烁：500ms 周期 */
-    static unsigned long last_toggle = 0;
-    if (millis() - last_toggle >= 250)
-    {
-      last_toggle = millis();
-      digitalWrite(RELAY_PIN, !digitalRead(RELAY_PIN));  // 翻转
-    }
+    RELAY_OFF();
+    FAN_OFF();
   }
 }
