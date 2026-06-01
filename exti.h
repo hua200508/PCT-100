@@ -3,15 +3,12 @@
 
 #include <Arduino.h>
 
-#define DEBOUNCE_MS 15  // 消抖时间（毫秒）
-
-/* KEY1=轮询+虚拟上拉,  KEY2=中断(FALLING)+虚拟上拉 */
-/* master_state: 0=总开关关 1=总开关开                   */
-/* triggered:    0=待命      1=常亮                      */
-extern volatile uint8_t master_state;
-extern volatile uint8_t triggered;
+extern volatile bool    key2_pressed;
+extern volatile unsigned long key2_press_time;
+extern uint8_t relay_mode;
+extern bool    auto_mode;
 
 void exti_init(void);
-void exti_process(void);
+void exti_check(void);  // 主循环调用，检测松手并处理长按/短按
 
 #endif
