@@ -1,3 +1,7 @@
+/*
+ * exti.cpp — KEY2 消抖 + 长按/短按识别（轮询版）
+ */
+
 #include "exti.h"
 #include "key.h"
 
@@ -6,12 +10,16 @@ extern bool master_switch;
 volatile bool key2_pressed = false;
 volatile unsigned long key2_press_time = 0;
 
-static volatile unsigned long k2_last_isr = 0;
 static volatile unsigned long last_release = 0;
-static const unsigned long K2_DEBOUNCE = 15;
+static const unsigned long K2_DEBOUNCE = 50;
 static const unsigned long RELEASE_COOLDOWN = 200;
+static const unsigned long LONG_PRESS_MS = 2000;
 
+static bool press_confirmed = false;
 static bool long_handled = false;
+static bool debounced_level = LOW;
+static bool raw_last_level = LOW;
+static unsigned long last_level_change = 0;
 
 uint8_t relay_mode = 0;   // 0=全关 2=灯亮 1=风扇转 3=全开
 bool    auto_mode   = true;  // 默认自动模式
@@ -25,17 +33,6 @@ void IRAM_ATTR key2_isr(void);  // 前置声明
 void exti_init(void)
 {
   pinMode(KEY2_PIN, INPUT_PULLDOWN);
-  attachInterrupt(digitalPinToInterrupt(KEY2_PIN), key2_isr, RISING);
-}
-
-void IRAM_ATTR key2_isr(void)
-{
-  unsigned long now = millis();
-  if (now - k2_last_isr < K2_DEBOUNCE) return;
-  if (now - last_release < RELEASE_COOLDOWN) return;
-  k2_last_isr = now;
-  key2_press_time = now;
-  key2_pressed = true;
 }
 
 static void do_short_press(void)
@@ -74,52 +71,49 @@ static void do_long_press(void)
 
 void exti_check(void)
 {
-  static bool last_level = LOW;
-  static uint8_t low_cnt = 0;
-  static uint8_t high_cnt = 0;
-  bool cur = digitalRead(KEY2_PIN);
+  bool raw_level = digitalRead(KEY2_PIN);
+  unsigned long now = millis();
 
-  if (!key2_pressed) {
-    last_level = cur;
-    low_cnt = 0;
-    high_cnt = 0;
+  if (raw_level != raw_last_level) {
+    raw_last_level = raw_level;
+    last_level_change = now;
     return;
   }
 
-  unsigned long dur = millis() - key2_press_time;
+  if (now - last_level_change < K2_DEBOUNCE) {
+    return;
+  }
 
-  if (cur == HIGH) {
-    last_level = HIGH;
-    low_cnt = 0;
-    high_cnt++;
-    // 连续3次 HIGH（约15ms）才确认是真实按下，而非松手抖动毛刺
-    if (high_cnt == 3) {
+  if (raw_level != debounced_level) {
+    debounced_level = raw_level;
+    if (debounced_level == HIGH) {
+      if (now - last_release < RELEASE_COOLDOWN) {
+        return;
+      }
+      key2_pressed = true;
+      key2_press_time = now;
+      press_confirmed = true;
       long_handled = false;
+    } else {
+      if (key2_pressed && press_confirmed && !long_handled) {
+        unsigned long dur = now - key2_press_time;
+        if (dur < LONG_PRESS_MS) {
+          do_short_press();
+        } else {
+          do_long_press();
+        }
+      }
+      key2_pressed = false;
+      press_confirmed = false;
+      long_handled = false;
+      last_release = now;
     }
-    if (!long_handled && dur >= 2000) {
+  }
+
+  if (key2_pressed && press_confirmed && !long_handled) {
+    unsigned long dur = now - key2_press_time;
+    if (dur >= LONG_PRESS_MS) {
       do_long_press();
     }
-    return;
   }
-
-  // cur == LOW：可能是松手，也可能是噪声，需要连续多次 LOW 确认
-  high_cnt = 0;
-  if (last_level == HIGH) {
-    low_cnt = 1;
-  } else if (dur >= K2_DEBOUNCE) {
-    low_cnt++;
-  }
-
-  // 连续 3 次（约15ms）读到 LOW 才确认松手
-  if (low_cnt >= 3) {
-    if (!long_handled && dur >= 15) {
-      do_short_press();
-    }
-    key2_pressed = false;
-    low_cnt = 0;
-    high_cnt = 0;
-    last_release = millis();
-  }
-
-  last_level = cur;
 }
